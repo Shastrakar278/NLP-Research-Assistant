@@ -1,7 +1,13 @@
 import streamlit as st
-from synthesis import generate_paper
-from copyleaks_checker import submit_to_copyleaks
 
+from paper_search import search_papers
+
+from synthesis import (
+    generate_paper,
+    generate_workflow
+)
+
+from copyleaks_checker import submit_to_copyleaks
 
 # ============================================================
 # PAGE CONFIG
@@ -41,14 +47,14 @@ defaults = {
     "score_type": None,
     "analysis_done": False,
     "scan_id": None,
-    "generation_count": 0
+    "generation_count": 0,
+    "papers": [],
+    "workflow": ""
 }
 
 for key, value in defaults.items():
     if key not in st.session_state:
         st.session_state[key] = value
-
-
 # ============================================================
 # SIDEBAR
 # ============================================================
@@ -104,34 +110,41 @@ def generate_new_paper(topic):
     try:
 
         with st.spinner(
-            "Generating research paper..."
+            "Searching papers and generating dynamic research paper..."
         ):
+
+            papers = search_papers(
+                topic,
+                count=5
+            )
 
             paper = generate_paper(
                 topic,
-                []
+                papers
+            )
+
+            workflow = generate_workflow(
+                topic,
+                papers
             )
 
         st.session_state.paper = paper
         st.session_state.topic = topic
+        st.session_state.papers = papers
+        st.session_state.workflow = workflow
 
         st.session_state.generation_count += 1
 
-        # Reset previous similarity result
-        st.session_state.similarity_score = None
-        st.session_state.score_type = None
-        st.session_state.analysis_done = False
-        st.session_state.scan_id = None
-
-        return True
+        st.success(
+            f"Research paper generated using {len(papers)} papers "
+            f"for: {topic}"
+        )
 
     except Exception as e:
 
         st.error(
-            f"Paper generation error: {str(e)}"
+            f"Paper generation failed: {e}"
         )
-
-        return False
 
 
 # ============================================================
@@ -234,13 +247,30 @@ if st.session_state.paper:
 
     paper = st.session_state.paper
 
-    st.divider()
+    # ========================================================
+    # DISPLAY DYNAMIC SYSTEM WORKFLOW
+    # ========================================================
 
-    st.header("📄 Generated Research Paper")
+    if "workflow" in st.session_state and st.session_state.workflow:
 
-    st.success(
-        f"Paper generated successfully! "
-        f"Generation #{st.session_state.generation_count}"
+        st.subheader("🔄 Dynamic System Workflow")
+
+        st.text_area(
+            "System Workflow",
+            value=st.session_state.workflow,
+            height=600
+        )
+
+    # ========================================================
+    # DISPLAY GENERATED RESEARCH PAPER
+    # ========================================================
+
+    st.subheader("📝 Generated Research Paper")
+
+    st.text_area(
+        "Research Paper",
+        value=paper,
+        height=700
     )
 
     # --------------------------------------------------------
